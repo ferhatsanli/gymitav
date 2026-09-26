@@ -15,6 +15,7 @@ class WorkoutSessionTest {
         assertEquals(3, session.state.targetSets)
         assertEquals(0L, session.state.elapsedSeconds)
         assertFalse(session.state.isRunning)
+        assertFalse(session.state.isWorkoutSessionActive)
     }
 
     @Test
@@ -28,6 +29,7 @@ class WorkoutSessionTest {
         assertEquals(1, update.state.completedSets)
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
+        assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
@@ -38,6 +40,7 @@ class WorkoutSessionTest {
 
         assertFalse(update.state.isRunning)
         assertEquals(0L, update.state.elapsedSeconds)
+        assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
@@ -51,6 +54,7 @@ class WorkoutSessionTest {
         assertEquals(4, update.state.targetSets)
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
+        assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
@@ -62,6 +66,7 @@ class WorkoutSessionTest {
         assertEquals(4, update.state.targetSets)
         assertEquals(3, update.state.defaultSets)
         assertEquals(1, update.state.completedSets)
+        assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
@@ -148,13 +153,21 @@ class WorkoutSessionTest {
         assertEquals(2, update.state.completedSets)
         assertEquals(5, update.state.targetSets)
         assertEquals(4, update.state.defaultSets)
+        assertTrue(update.state.isWorkoutSessionActive)
         assertFalse(update.state.isRunning)
         assertEquals(0L, update.state.elapsedSeconds)
     }
 
     @Test
     fun mainBackWithElapsedTimerResetsOnlyTimerAndPreservesProgress() {
-        val session = WorkoutSession(WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4))
+        val session = WorkoutSession(WorkoutState(
+            exercise = 3,
+            completedSets = 2,
+            targetSets = 5,
+            defaultSets = 4,
+            restLimitSeconds = 180,
+            overdueReminderSeconds = 15
+        ))
         session.toggleTimer(0L)
         session.refresh(77_000L)
         session.toggleTimer(77_000L)
@@ -167,36 +180,91 @@ class WorkoutSessionTest {
         assertEquals(2, update.state.completedSets)
         assertEquals(5, update.state.targetSets)
         assertEquals(4, update.state.defaultSets)
+        assertEquals(180, update.state.restLimitSeconds)
+        assertEquals(15, update.state.overdueReminderSeconds)
+        assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
     fun mainBackWhileRunningResetsAndPausesTimer() {
-        val session = WorkoutSession(WorkoutState(completedSets = 1))
+        val session = WorkoutSession(WorkoutState(
+            exercise = 4,
+            completedSets = 1,
+            targetSets = 5,
+            defaultSets = 3,
+            restLimitSeconds = 180,
+            overdueReminderSeconds = 20
+        ))
         session.toggleTimer(1_000L)
 
         val update = session.handleMainScreenBack(43_000L)
 
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
+        assertEquals(4, update.state.exercise)
         assertEquals(1, update.state.completedSets)
+        assertEquals(5, update.state.targetSets)
+        assertEquals(3, update.state.defaultSets)
+        assertEquals(180, update.state.restLimitSeconds)
+        assertEquals(20, update.state.overdueReminderSeconds)
+        assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
-    fun mainBackAtPausedZeroClearsCompletedSetsOnly() {
+    fun pausingTheTimerKeepsTheWorkoutSessionActive() {
+        val session = WorkoutSession()
+        session.toggleTimer(0L)
+
+        val update = session.toggleTimer(20_000L)
+
+        assertFalse(update.state.isRunning)
+        assertTrue(update.state.isWorkoutSessionActive)
+    }
+
+    @Test
+    fun mainBackAtPausedZeroEndsSessionAndPreservesSettings() {
         val session = WorkoutSession(
-            WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4, overdueReminderSeconds = 15)
+            WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4,
+                restLimitSeconds = 180, overdueReminderSeconds = 15, isWorkoutSessionActive = true)
         )
 
         val update = session.handleMainScreenBack(0L)
 
         assertEquals(0, update.state.completedSets)
-        assertEquals(3, update.state.exercise)
-        assertEquals(5, update.state.targetSets)
+        assertEquals(1, update.state.exercise)
+        assertEquals(4, update.state.targetSets)
         assertEquals(4, update.state.defaultSets)
-        assertEquals(120, update.state.restLimitSeconds)
+        assertEquals(180, update.state.restLimitSeconds)
         assertEquals(15, update.state.overdueReminderSeconds)
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
+        assertFalse(update.state.isWorkoutSessionActive)
+    }
+
+    @Test
+    fun fullSessionResetClearsReminderSchedulingButRetainsUserPreferences() {
+        val session = WorkoutSession(
+            WorkoutState(exercise = 5, completedSets = 2, targetSets = 7, defaultSets = 3,
+                restLimitSeconds = 15, overdueReminderSeconds = 5, isWorkoutSessionActive = true)
+        )
+        session.toggleTimer(0L)
+        session.refresh(15_000L)
+        session.toggleTimer(15_000L)
+
+        session.handleMainScreenBack(15_000L) // Stage 1: clear the timer.
+        val update = session.handleMainScreenBack(15_000L) // Stage 2: end the session.
+
+        assertEquals(1, update.state.exercise)
+        assertEquals(0, update.state.completedSets)
+        assertEquals(3, update.state.targetSets)
+        assertEquals(3, update.state.defaultSets)
+        assertEquals(15, update.state.restLimitSeconds)
+        assertEquals(5, update.state.overdueReminderSeconds)
+        assertEquals(0L, update.state.elapsedSeconds)
+        assertFalse(update.state.isRunning)
+        assertFalse(update.state.isWorkoutSessionActive)
+        assertFalse(session.hasNotifiedRestLimit)
+        org.junit.Assert.assertNull(session.nextOverdueReminderAtSeconds)
     }
 
     @Test

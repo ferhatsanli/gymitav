@@ -8,7 +8,8 @@ data class WorkoutState(
     val restLimitSeconds: Int = 120,
     val overdueReminderSeconds: Int = 10,
     val elapsedSeconds: Long = 0,
-    val isRunning: Boolean = false
+    val isRunning: Boolean = false,
+    val isWorkoutSessionActive: Boolean = false
 ) {
     init {
         require(restLimitSeconds in MIN_REST_LIMIT_SECONDS..MAX_REST_LIMIT_SECONDS)

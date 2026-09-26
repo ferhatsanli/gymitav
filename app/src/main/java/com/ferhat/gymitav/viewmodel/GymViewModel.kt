@@ -41,17 +41,16 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             is WorkoutAction.AdjustOverdueReminder -> session.adjustOverdueReminder(action.deltaSeconds, now)
         }
         publish(update)
-        syncReminderRunner(now)
+        syncWorkoutSessionService(now)
 
         if (session.state.isRunning) startTimerTicks() else stopTimerTicks()
     }
 
     /** Refreshes from elapsed real time when the activity returns from display sleep. */
     fun refreshElapsedTime() {
-        if (!session.state.isRunning) return
         val now = SystemClock.elapsedRealtime()
-        publish(session.refresh(now))
-        syncReminderRunner(now)
+        if (session.state.isRunning) publish(session.refresh(now))
+        syncWorkoutSessionService(now)
     }
 
     private fun startTimerTicks() {
@@ -84,15 +83,19 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun syncReminderRunner(nowMillis: Long) {
+    private fun syncWorkoutSessionService(nowMillis: Long) {
         RestReminderService.sync(
             context = getApplication(),
+            sessionActive = session.state.isWorkoutSessionActive,
             running = session.state.isRunning,
             elapsedMillis = session.elapsedMillisAt(nowMillis),
             restLimitSeconds = session.state.restLimitSeconds,
             overdueIntervalSeconds = session.state.overdueReminderSeconds,
             limitNotified = session.hasNotifiedRestLimit,
-            nextOverdueAtSeconds = session.nextOverdueReminderAtSeconds
+            nextOverdueAtSeconds = session.nextOverdueReminderAtSeconds,
+            exercise = session.state.exercise,
+            completedSets = session.state.completedSets,
+            targetSets = session.state.targetSets
         )
     }
 

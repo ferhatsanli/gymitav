@@ -23,7 +23,7 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
         }
 
         startedAtMillis = nowMillis
-        state = state.copy(isRunning = true)
+        state = state.copy(isRunning = true, isWorkoutSessionActive = true)
         return SessionUpdate(state)
     }
 
@@ -68,15 +68,15 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
         return SessionUpdate(state)
     }
 
-    /** Back first clears an active rest timer, then clears completed sets when already idle at zero. */
+    /** Back resets a nonzero timer first; a second Back at zero ends the workout session. */
     fun handleMainScreenBack(nowMillis: Long): SessionUpdate {
         if (state.isRunning || elapsedMillis(nowMillis) > 0L) return resetTimer()
-        state = state.copy(completedSets = 0)
-        return SessionUpdate(state)
+        return endWorkoutSession()
     }
 
     fun completeSet(nowMillis: Long): SessionUpdate {
         val notifications = refresh(nowMillis).notifications
+        state = state.copy(isWorkoutSessionActive = true)
         val completed = state.completedSets + 1
         state = if (completed >= state.targetSets) {
             state.copy(
@@ -91,8 +91,22 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
         return SessionUpdate(state, notifications)
     }
 
+    fun endWorkoutSession(): SessionUpdate {
+        resetTimer()
+        resetCurrentTargetToDefault()
+        state = state.copy(
+            exercise = 1,
+            completedSets = 0,
+            isWorkoutSessionActive = false
+        )
+        return SessionUpdate(state)
+    }
+
     fun increaseTargetSets(): SessionUpdate {
-        state = state.copy(targetSets = (state.targetSets + 1).coerceAtMost(MAX_SETS))
+        state = state.copy(
+            targetSets = (state.targetSets + 1).coerceAtMost(MAX_SETS),
+            isWorkoutSessionActive = true
+        )
         return SessionUpdate(state)
     }
 

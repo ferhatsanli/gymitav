@@ -1,6 +1,11 @@
 package com.ferhat.gymitav.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -19,7 +24,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -29,8 +37,10 @@ import com.ferhat.gymitav.viewmodel.GymViewModel
 
 @Composable
 fun GymApp(viewModel: GymViewModel) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var showingSettings by rememberSaveable { mutableStateOf(false) }
+    var pendingSessionAction by rememberSaveable { mutableStateOf<String?>(null) }
     val edgePulseProgress = remember { Animatable(0f) }
     val pulseAction = remember { mutableStateOf<MainScreenAction?>(null) }
     var pulseSequence by remember { mutableIntStateOf(0) }
@@ -50,7 +60,7 @@ fun GymApp(viewModel: GymViewModel) {
         edgePulseProgress.animateTo(0f, tween(durationMillis = LED_FADE_MILLIS))
     }
 
-    val onMainAction: (MainScreenAction, Boolean) -> Unit = { action, fromSwipe ->
+    val executeMainAction: (MainScreenAction, Boolean) -> Unit = { action, fromSwipe ->
         val shouldShowFeedback = action != MainScreenAction.TOGGLE_TIMER &&
             !(fromSwipe && action == MainScreenAction.OPEN_SETTINGS)
         if (shouldShowFeedback) {
@@ -63,6 +73,49 @@ fun GymApp(viewModel: GymViewModel) {
             MainScreenAction.OPEN_SETTINGS -> showingSettings = true
             MainScreenAction.COMPLETE_SET -> viewModel.dispatch(WorkoutAction.CompleteSet)
             MainScreenAction.BACK -> viewModel.dispatch(WorkoutAction.MainScreenBack)
+        }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        val actionName = pendingSessionAction
+        pendingSessionAction = null
+        if (actionName != null) {
+            if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                Toast.makeText(
+                    context,
+                    "Allow notifications to return to an active workout from the watch face",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            executeMainAction(MainScreenAction.valueOf(actionName), false)
+        }
+    }
+
+    val onMainAction: (MainScreenAction, Boolean) -> Unit = { action, fromSwipe ->
+        val state = viewModel.state.value
+        val startsSession = !state.isWorkoutSessionActive && when (action) {
+            MainScreenAction.TOGGLE_TIMER -> !state.isRunning
+            MainScreenAction.INCREASE_TARGET_SETS, MainScreenAction.COMPLETE_SET -> true
+            else -> false
+        }
+        val notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        val notificationPermissionMissing =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+
+        if (startsSession && notificationPermissionMissing) {
+            pendingSessionAction = action.name
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            if (startsSession && !notificationsAllowed) {
+                Toast.makeText(
+                    context,
+                    "Allow notifications to return to an active workout from the watch face",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            executeMainAction(action, fromSwipe)
         }
     }
 
