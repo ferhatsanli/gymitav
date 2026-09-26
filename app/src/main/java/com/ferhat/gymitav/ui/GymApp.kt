@@ -1,41 +1,74 @@
 package com.ferhat.gymitav.ui
 
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ferhat.gymitav.model.WorkoutAction
 import com.ferhat.gymitav.viewmodel.GymViewModel
 
 @Composable
-fun GymApp() {
+fun GymApp(viewModel: GymViewModel) {
     val context = LocalContext.current
-    val owner = context as ViewModelStoreOwner
-    val viewModel = remember(owner) { ViewModelProvider(owner)[GymViewModel::class.java] }
-    var showingSettings by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var showingSettings by rememberSaveable { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshElapsedTime()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(viewModel, context) {
+        val vibrator = context.getSystemService(Vibrator::class.java)
+        viewModel.notifications.collect {
+            vibrator?.vibrate(VibrationEffect.createOneShot(HAPTIC_DURATION_MILLIS, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+    }
 
     BackHandler {
-        if (showingSettings) showingSettings = false else viewModel.resetTimer()
+        if (showingSettings) {
+            showingSettings = false
+            viewModel.refreshElapsedTime()
+        } else {
+            viewModel.dispatch(WorkoutAction.ResetTimer)
+        }
     }
 
     if (showingSettings) {
         SettingsScreen(
-            state = viewModel.state,
-            onAdjustRest = viewModel::adjustRestLimit,
-            onAdjustSets = viewModel::adjustDefaultSets
+            state = state,
+            onAction = viewModel::dispatch,
+            onBack = {
+                showingSettings = false
+                viewModel.refreshElapsedTime()
+            }
         )
     } else {
-        TimerScreen(
-            state = viewModel.state,
-            onToggleTimer = viewModel::toggleTimer,
-            onIncreaseTarget = viewModel::increaseTargetSets,
-            onCompleteSet = viewModel::completeSet,
-            onOpenSettings = { showingSettings = true },
-            onReset = viewModel::resetTimer
-        )
+        TimerScreen(state = state) { action ->
+            when (action) {
+                MainScreenAction.TOGGLE_TIMER -> viewModel.dispatch(WorkoutAction.ToggleTimer)
+                MainScreenAction.INCREASE_TARGET_SETS -> viewModel.dispatch(WorkoutAction.IncreaseTargetSets)
+                MainScreenAction.OPEN_SETTINGS -> showingSettings = true
+                MainScreenAction.COMPLETE_SET -> viewModel.dispatch(WorkoutAction.CompleteSet)
+                MainScreenAction.RESET_TIMER -> viewModel.dispatch(WorkoutAction.ResetTimer)
+            }
+        }
     }
 }
+
+private const val HAPTIC_DURATION_MILLIS = 140L
