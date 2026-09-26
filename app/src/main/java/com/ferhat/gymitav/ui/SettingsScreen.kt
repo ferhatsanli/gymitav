@@ -74,7 +74,13 @@ fun SettingsScreen(
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
         item(key = "settings-title") {
-            Box(Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(width = 156.dp, height = 36.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF0C1822).copy(alpha = 0.92f), Color(0xFF142638).copy(alpha = 0.96f), Color(0xFF0C1822).copy(alpha = 0.92f))))
+                    .border(1.dp, Color(0xFF70CFFF).copy(alpha = 0.28f), RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("SETTINGS", color = PrimaryText, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, textAlign = TextAlign.Center)
             }
         }
@@ -127,11 +133,16 @@ fun SettingsScreen(
         }
         item(key = "back") {
             Box(
-                modifier = Modifier.fillMaxWidth().height(52.dp).clickable(role = Role.Button, onClick = onBack)
+                modifier = Modifier.size(width = 136.dp, height = 44.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF102536), Color(0xFF172D42), Color(0xFF102536))))
+                    .border(1.dp, Color(0xFF68C9F2).copy(alpha = 0.24f), RoundedCornerShape(18.dp))
+                    .clickable(role = Role.Button, onClick = onBack)
                     .semantics { contentDescription = "Back to timer" },
                 contentAlignment = Alignment.Center
             ) {
-                Text("BACK TO TIMER", color = SecondaryText, fontSize = 10.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp)
+                Text("BACK TO TIMER", color = Color(0xFFB7D6E6), fontSize = 9.sp,
+                    fontWeight = FontWeight.Medium, letterSpacing = 0.65.sp, textAlign = TextAlign.Center)
             }
         }
       }

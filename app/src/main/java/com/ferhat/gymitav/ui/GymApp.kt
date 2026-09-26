@@ -50,8 +50,10 @@ fun GymApp(viewModel: GymViewModel) {
         edgePulseProgress.animateTo(0f, tween(durationMillis = LED_FADE_MILLIS))
     }
 
-    val onMainAction: (MainScreenAction) -> Unit = { action ->
-        if (action != MainScreenAction.TOGGLE_TIMER) {
+    val onMainAction: (MainScreenAction, Boolean) -> Unit = { action, fromSwipe ->
+        val shouldShowFeedback = action != MainScreenAction.TOGGLE_TIMER &&
+            !(fromSwipe && action == MainScreenAction.OPEN_SETTINGS)
+        if (shouldShowFeedback) {
             pulseAction.value = action
             pulseSequence += 1
         }
@@ -69,7 +71,7 @@ fun GymApp(viewModel: GymViewModel) {
             showingSettings = false
             viewModel.refreshElapsedTime()
         } else {
-            onMainAction(MainScreenAction.BACK)
+            onMainAction(MainScreenAction.BACK, false)
         }
     }
 
@@ -93,9 +95,13 @@ fun GymApp(viewModel: GymViewModel) {
 }
 
 @Composable
-private fun TimerContent(viewModel: GymViewModel, onAction: (MainScreenAction) -> Unit) {
+private fun TimerContent(viewModel: GymViewModel, onAction: (MainScreenAction, Boolean) -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    TimerScreen(state = state, onAction = onAction)
+    TimerScreen(
+        state = state,
+        onAction = { onAction(it, false) },
+        onSwipeAction = { onAction(it, true) }
+    )
 }
 
 @Composable

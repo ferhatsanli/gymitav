@@ -7,12 +7,12 @@ The app manifest identifies this as a watch-only Wear OS app and marks it as sta
 ## Workout behavior
 
 - The center starts and pauses the rest timer; **SET OK** counts a completed set, resets the timer, and leaves it paused. Completing the final target advances to the next exercise at `0/defaultSets`.
-- The annular dark-glass control ring has tappable sectors: top **+ SET**, right **SETTINGS**, bottom **SET OK**, and left **BACK**. Swiping down, left, up, or right performs those same actions; each outer action briefly pulses a green LED arc at the corresponding screen edge.
+- The annular dark-glass control ring has tappable sectors: top **+ SET**, right **SETTINGS**, bottom **SET OK**, and left **BACK**. Swiping down, left, up, or right performs those same actions. **+ SET**, **SET OK**, and **BACK** briefly pulse a green LED arc at the corresponding screen edge; opening Settings by swipe skips that pulse so the transition stays clear.
 - **+ SET** increases only the current exercise target. Settings independently edits exercise number, default sets, rest limit, and overdue reminder interval.
 - The timer turns red and emits one haptic at the rest limit. The default overdue reminder repeats every 10 seconds; the user can select OFF or 5–30 seconds in 5-second steps. A foreground service owns these haptics independently of Compose; while the timer runs it waits for the next reminder boundary without polling. It uses a partial CPU wake lock (never a display wake lock) so reminders remain timely while the display sleeps.
-- A soft radial glow appears only while running: green before the limit, red at or after it. The timer continues counting after the limit.
+- While running, four steady green inner-edge arcs follow the control sectors, with the black gaps between sectors left open. They turn red at the rest limit and disappear when paused. There is no center radial glow or continuous light animation. The timer continues counting after the limit.
 - System Back and **BACK** first reset a non-zero/running rest timer. If it is already paused at `00:00`, Back clears completed sets for the current exercise. Back in Settings returns to the timer without changing workout progress.
-- Elapsed time comes from `SystemClock.elapsedRealtime()`. The ViewModel updates the display once per second only while the timer runs, and refreshes from the monotonic clock when the activity resumes. The screen is not held awake.
+- Elapsed time comes from `SystemClock.elapsedRealtime()`. The ViewModel updates the display once per second only while the timer runs, and refreshes from the monotonic clock when the activity resumes. The Activity does not finish itself or hold the screen awake; wake-and-return behavior still needs verification on a Wear OS device because this workspace has no Wear OS emulator/device.
 - Settings uses Wear Compose's scaling lazy list and scroll indicator, which support rotary and touch scrolling.
 
 ## MVVM source layout

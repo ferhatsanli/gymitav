@@ -49,11 +49,13 @@ private val OvertimeRed = Color(0xFFFF5964)
 @Composable
 fun TimerScreen(
     state: WorkoutState,
-    onAction: (MainScreenAction) -> Unit
+    onAction: (MainScreenAction) -> Unit,
+    onSwipeAction: (MainScreenAction) -> Unit = onAction
 ) {
     val density = LocalDensity.current
     val viewConfiguration = LocalViewConfiguration.current
     val currentAction = rememberUpdatedState(onAction)
+    val currentSwipeAction = rememberUpdatedState(onSwipeAction)
     val currentDescription = "Exercise ${state.exercise}. ${formatElapsed(state.elapsedSeconds)}. " +
         "${state.completedSets} of ${state.targetSets} sets completed. ${if (state.isRunning) "Timer running" else "Timer paused"}."
 
@@ -80,7 +82,7 @@ fun TimerScreen(
                             val action = resolveSwipeAction(dx, dy, threshold)
                             if (action != null) {
                                 change.consume()
-                                currentAction.value(action)
+                                currentSwipeAction.value(action)
                                 triggered = true
                                 break
                             }
@@ -128,7 +130,6 @@ fun TimerScreen(
     ) {
         val side = minOf(maxWidth, maxHeight)
         Canvas(Modifier.fillMaxSize()) {
-            drawTimerGlow(state)
             drawControlRing(state)
         }
 
@@ -163,24 +164,6 @@ fun TimerScreen(
 @Composable
 private fun TextLabel(text: String, size: androidx.compose.ui.unit.TextUnit, color: Color, weight: FontWeight) {
     androidx.compose.material3.Text(text = text, color = color, fontSize = size, fontWeight = weight, letterSpacing = 1.sp, maxLines = 1)
-}
-
-private fun DrawScope.drawTimerGlow(state: WorkoutState) {
-    if (!state.isRunning) return
-    val radius = size.minDimension * 0.39f
-    val glowColor = if (state.isOverRestLimit) OvertimeRed else RunningGreen
-    drawCircle(
-        brush = Brush.radialGradient(
-            0f to glowColor.copy(alpha = 0.16f),
-            0.34f to glowColor.copy(alpha = 0.105f),
-            0.72f to glowColor.copy(alpha = 0.025f),
-            1f to Color.Transparent,
-            center = center,
-            radius = radius
-        ),
-        radius = radius,
-        center = center
-    )
 }
 
 private fun DrawScope.drawControlRing(state: WorkoutState) {
@@ -236,13 +219,32 @@ private fun DrawScope.drawControlRing(state: WorkoutState) {
     }
 
     drawCircle(Color(0xFF7DCFEF).copy(alpha = 0.16f), outerRadius, center, style = Stroke(width = 1.dp.toPx()))
-    drawCircle(Color(0xFF7DCFEF).copy(alpha = 0.11f), innerRadius, center, style = Stroke(width = 1.dp.toPx()))
 
-    listOf(-135f, -45f, 45f, 135f).forEach { angle ->
-        val radians = Math.toRadians(angle.toDouble())
-        val inner = Offset(center.x + (innerRadius - 2.dp.toPx()) * kotlin.math.cos(radians).toFloat(), center.y + (innerRadius - 2.dp.toPx()) * kotlin.math.sin(radians).toFloat())
-        val outer = Offset(center.x + (outerRadius + 1.dp.toPx()) * kotlin.math.cos(radians).toFloat(), center.y + (outerRadius + 1.dp.toPx()) * kotlin.math.sin(radians).toFloat())
-        drawLine(Color.White.copy(alpha = 0.14f), inner, outer, strokeWidth = 1.dp.toPx())
+    if (state.isRunning) {
+        val runningColor = if (state.isOverRestLimit) OvertimeRed else RunningGreen
+        val edgeRadius = innerRadius + 0.5.dp.toPx()
+        val edgeTopLeft = Offset(center.x - edgeRadius, center.y - edgeRadius)
+        val edgeSize = Size(edgeRadius * 2f, edgeRadius * 2f)
+        listOf(-130f, -40f, 50f, 140f).forEach { start ->
+            drawArc(
+                color = runningColor.copy(alpha = INNER_LED_BLOOM_ALPHA),
+                startAngle = start,
+                sweepAngle = 80f,
+                useCenter = false,
+                topLeft = edgeTopLeft,
+                size = edgeSize,
+                style = Stroke(width = INNER_LED_BLOOM_WIDTH.dp.toPx(), cap = StrokeCap.Butt)
+            )
+            drawArc(
+                color = runningColor.copy(alpha = INNER_LED_CORE_ALPHA),
+                startAngle = start,
+                sweepAngle = 80f,
+                useCenter = false,
+                topLeft = edgeTopLeft,
+                size = edgeSize,
+                style = Stroke(width = INNER_LED_CORE_WIDTH.dp.toPx(), cap = StrokeCap.Butt)
+            )
+        }
     }
 
     drawCurvedLabels(sectorColor)
@@ -273,9 +275,10 @@ private fun DrawScope.drawCurvedLabels(color: Color) {
             val offset = ((availableLength - paint.measureText(label)) / 2f).coerceAtLeast(0f)
             canvas.nativeCanvas.drawTextOnPath(label, path, offset, 0f, paint)
         }
-        paint.textAlign = Paint.Align.CENTER
-        val baseline = center.y + labelRadius - (paint.ascent() + paint.descent()) / 2f
-        canvas.nativeCanvas.drawText("SET OK", center.x, baseline, paint)
+        val bottomPath = Path().apply { addArc(bounds, 130f, -80f) }
+        val bottomLength = labelRadius * Math.toRadians(80.0).toFloat()
+        val bottomOffset = ((bottomLength - paint.measureText("SET OK")) / 2f).coerceAtLeast(0f)
+        canvas.nativeCanvas.drawTextOnPath("SET OK", bottomPath, bottomOffset, 0f, paint)
     }
 }
 
@@ -287,3 +290,7 @@ private fun formatElapsed(seconds: Long): String = "%02d:%02d".format(seconds / 
 private const val INNER_RADIUS_FRACTION = 0.315f
 private const val OUTER_RADIUS_FRACTION = 0.49f
 private const val INNER_DIAMETER_FRACTION = INNER_RADIUS_FRACTION * 2f
+private const val INNER_LED_BLOOM_ALPHA = 0.16f
+private const val INNER_LED_CORE_ALPHA = 0.78f
+private const val INNER_LED_BLOOM_WIDTH = 5f
+private const val INNER_LED_CORE_WIDTH = 1.5f
