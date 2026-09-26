@@ -2,6 +2,8 @@
 
 First Wear OS timer prototype for a round watch display.
 
+The app manifest identifies this as a watch-only Wear OS app and marks it as standalone because the workout timer does not need a companion phone. Google Play will filter this package for Wear OS devices.
+
 ## Workout behavior
 
 - The center starts and pauses the rest timer.
