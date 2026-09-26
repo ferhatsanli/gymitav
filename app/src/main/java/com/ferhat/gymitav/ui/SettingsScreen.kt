@@ -2,6 +2,7 @@ package com.ferhat.gymitav.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -49,6 +52,18 @@ fun SettingsScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(SettingsBackground)) {
+      Canvas(Modifier.fillMaxSize()) {
+          val radius = size.minDimension * 0.72f
+          drawCircle(
+              brush = Brush.radialGradient(
+                  colors = listOf(Color(0xFF986BFF).copy(alpha = 0.075f), Color(0xFF7650D8).copy(alpha = 0.025f), Color.Transparent),
+                  center = Offset(size.width * 0.28f, size.height * 0.17f),
+                  radius = radius
+              ),
+              radius = radius,
+              center = Offset(size.width * 0.28f, size.height * 0.17f)
+          )
+      }
       ScalingLazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -76,6 +91,17 @@ fun SettingsScreen(
                 onDecrease = { onAction(WorkoutAction.AdjustDefaultSets(-1)) },
                 onIncrease = { onAction(WorkoutAction.AdjustDefaultSets(1)) }
             )
+        }
+        item(key = "reset-current-target") {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(30.dp)
+                    .clickable(role = Role.Button) { onAction(WorkoutAction.ResetCurrentTargetToDefault) }
+                    .semantics { contentDescription = "Reset current exercise target to default sets" },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("RESET TO DEFAULT", color = SecondaryText.copy(alpha = 0.78f), fontSize = 8.sp,
+                    fontWeight = FontWeight.Medium, letterSpacing = 0.8.sp, textAlign = TextAlign.Center)
+            }
         }
         item(key = "rest-limit") {
             SettingStepper(

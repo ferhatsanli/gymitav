@@ -137,7 +137,12 @@ fun TimerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
         ) {
-            TextLabel("EXERCISE ${state.exercise}", size = 11.sp, color = Color(0xFFB6C4CC), weight = FontWeight.Medium)
+            val exerciseLabelSize = when {
+                state.exercise >= 100 -> 8.sp
+                state.exercise >= 10 -> 9.sp
+                else -> 10.sp
+            }
+            TextLabel("EXERCISE ${state.exercise}", size = exerciseLabelSize, color = Color(0xFFB6C4CC), weight = FontWeight.Medium)
             Spacer(Modifier.height(5.dp))
             androidx.compose.material3.Text(
                 text = formatElapsed(state.elapsedSeconds),
@@ -225,7 +230,6 @@ private fun DrawScope.drawCurvedLabels(color: Color) {
     val labels = listOf(
         "+ SET" to 230f,
         "SETTINGS" to 320f,
-        "SET OK" to 50f,
         "BACK" to 140f
     )
     val arcSweep = 80f
@@ -244,6 +248,9 @@ private fun DrawScope.drawCurvedLabels(color: Color) {
             val offset = ((availableLength - paint.measureText(label)) / 2f).coerceAtLeast(0f)
             canvas.nativeCanvas.drawTextOnPath(label, path, offset, 0f, paint)
         }
+        paint.textAlign = Paint.Align.CENTER
+        val baseline = center.y + labelRadius - (paint.ascent() + paint.descent()) / 2f
+        canvas.nativeCanvas.drawText("SET OK", center.x, baseline, paint)
     }
 }
 

@@ -1,16 +1,12 @@
 package com.ferhat.gymitav.ui
 
-import android.os.VibrationEffect
-import android.os.Vibrator
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -20,7 +16,6 @@ import com.ferhat.gymitav.viewmodel.GymViewModel
 
 @Composable
 fun GymApp(viewModel: GymViewModel) {
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showingSettings by rememberSaveable { mutableStateOf(false) }
@@ -31,13 +26,6 @@ fun GymApp(viewModel: GymViewModel) {
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(viewModel, context) {
-        val vibrator = context.getSystemService(Vibrator::class.java)
-        viewModel.notifications.collect {
-            vibrator?.vibrate(VibrationEffect.createOneShot(HAPTIC_DURATION_MILLIS, VibrationEffect.DEFAULT_AMPLITUDE))
-        }
     }
 
     BackHandler {
@@ -70,5 +58,3 @@ fun GymApp(viewModel: GymViewModel) {
         }
     }
 }
-
-private const val HAPTIC_DURATION_MILLIS = 140L

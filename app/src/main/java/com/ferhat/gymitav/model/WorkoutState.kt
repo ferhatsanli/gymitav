@@ -10,7 +10,18 @@ data class WorkoutState(
     val elapsedSeconds: Long = 0,
     val isRunning: Boolean = false
 ) {
+    init {
+        require(restLimitSeconds in MIN_REST_LIMIT_SECONDS..MAX_REST_LIMIT_SECONDS)
+        require(restLimitSeconds % REST_LIMIT_STEP_SECONDS == 0)
+    }
+
     val isOverRestLimit: Boolean get() = elapsedSeconds >= restLimitSeconds
+
+    companion object {
+        const val REST_LIMIT_STEP_SECONDS = 15
+        const val MIN_REST_LIMIT_SECONDS = 15
+        const val MAX_REST_LIMIT_SECONDS = 3_600
+    }
 }
 
 data class SessionUpdate(

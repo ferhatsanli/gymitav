@@ -65,6 +65,59 @@ class WorkoutSessionTest {
     }
 
     @Test
+    fun resetCurrentTargetToDefaultChangesOnlyTheCurrentTarget() {
+        val session = WorkoutSession(WorkoutState(exercise = 7, completedSets = 1, targetSets = 8, defaultSets = 3))
+        session.toggleTimer(1_000L)
+        session.refresh(12_500L)
+
+        val update = session.resetCurrentTargetToDefault()
+
+        assertEquals(3, update.state.targetSets)
+        assertEquals(3, update.state.defaultSets)
+        assertEquals(7, update.state.exercise)
+        assertEquals(1, update.state.completedSets)
+        assertEquals(11L, update.state.elapsedSeconds)
+        assertTrue(update.state.isRunning)
+    }
+
+    @Test
+    fun restLimitMinimumIsFifteenAndDecrementCannotGoLower() {
+        val session = WorkoutSession(WorkoutState(restLimitSeconds = 15))
+
+        assertEquals(15, session.adjustRestLimit(-15, 0L).state.restLimitSeconds)
+        assertEquals(30, session.adjustRestLimit(15, 0L).state.restLimitSeconds)
+        assertEquals(15, session.adjustRestLimit(-15, 0L).state.restLimitSeconds)
+    }
+
+    @Test
+    fun restLimitUsesFifteenSecondGridAroundTwoMinutes() {
+        val session = WorkoutSession(WorkoutState(restLimitSeconds = 105))
+
+        assertEquals(120, session.adjustRestLimit(15, 0L).state.restLimitSeconds)
+        assertEquals(105, session.adjustRestLimit(-15, 0L).state.restLimitSeconds)
+        var value = 105
+        repeat(32) {
+            value = WorkoutSession(WorkoutState(restLimitSeconds = value)).adjustRestLimit(15, 0L).state.restLimitSeconds
+            assertEquals(0, value % 15)
+        }
+        value = 120
+        repeat(32) {
+            value = WorkoutSession(WorkoutState(restLimitSeconds = value)).adjustRestLimit(-15, 0L).state.restLimitSeconds
+            assertEquals(0, value % 15)
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun tenSecondRestLimitCannotExistInWorkoutState() {
+        WorkoutState(restLimitSeconds = 10)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun offGridRestLimitCannotExistInWorkoutState() {
+        WorkoutState(restLimitSeconds = 115)
+    }
+
+    @Test
     fun defaultSetSettingIsUsedByTheFollowingExercise() {
         val session = WorkoutSession(WorkoutState(targetSets = 4, completedSets = 3))
         session.adjustDefaultSets(1)
@@ -184,13 +237,36 @@ class WorkoutSessionTest {
 
     @Test
     fun resetBeginsANewThresholdNotificationSession() {
-        val session = WorkoutSession(WorkoutState(restLimitSeconds = 10, overdueReminderSeconds = 0))
+        val session = WorkoutSession(WorkoutState(restLimitSeconds = 15, overdueReminderSeconds = 0))
         session.toggleTimer(0L)
-        session.refresh(10_000L)
+        session.refresh(15_000L)
         session.resetTimer()
         session.toggleTimer(20_000L)
 
-        assertEquals(listOf(RestNotification.REST_LIMIT_REACHED), session.refresh(30_000L).notifications)
+        assertEquals(listOf(RestNotification.REST_LIMIT_REACHED), session.refresh(35_000L).notifications)
+    }
+
+    @Test
+    fun backgroundReminderPlanSchedulesThresholdAndConfiguredIntervals() {
+        assertEquals(120L, RestReminderPlan.nextReminderAtSeconds(true, 30, 120, 10, false, null))
+        assertEquals(120L, RestReminderPlan.nextReminderAtSeconds(true, 120, 120, 0, false, null))
+        assertEquals(null, RestReminderPlan.nextReminderAtSeconds(true, 120, 120, 0, true, null))
+        assertEquals(125L, RestReminderPlan.nextReminderAtSeconds(true, 120, 120, 5, true, 125L))
+        assertEquals(130L, RestReminderPlan.nextReminderAtSeconds(true, 120, 120, 10, true, 130L))
+        assertEquals(140L, RestReminderPlan.nextReminderAtSeconds(true, 133, 120, 10, true, 130L))
+    }
+
+    @Test
+    fun backgroundReminderPlanSuspendsWhilePausedAndResetStartsFresh() {
+        val paused = WorkoutSession(WorkoutState(isRunning = false, elapsedSeconds = 121, overdueReminderSeconds = 5))
+        assertFalse(paused.state.isRunning)
+        assertEquals(null, RestReminderPlan.nextReminderAtSeconds(false, 121, 120, 5, false, null))
+
+        val reset = WorkoutSession(WorkoutState(restLimitSeconds = 15, overdueReminderSeconds = 0))
+        reset.toggleTimer(0)
+        reset.refresh(15_000)
+        reset.resetTimer()
+        assertEquals(15L, RestReminderPlan.nextReminderAtSeconds(true, reset.state.elapsedSeconds, 15, 0, reset.hasNotifiedRestLimit, reset.nextOverdueReminderAtSeconds))
     }
 
     @Test

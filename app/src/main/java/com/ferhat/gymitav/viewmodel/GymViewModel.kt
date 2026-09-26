@@ -1,30 +1,26 @@
 package com.ferhat.gymitav.viewmodel
 
 import android.os.SystemClock
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.ferhat.gymitav.model.RestNotification
+import com.ferhat.gymitav.background.RestReminderService
 import com.ferhat.gymitav.model.SessionUpdate
 import com.ferhat.gymitav.model.WorkoutAction
 import com.ferhat.gymitav.model.WorkoutSession
 import com.ferhat.gymitav.model.WorkoutState
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class GymViewModel : ViewModel() {
+class GymViewModel(application: Application) : AndroidViewModel(application) {
     private val session = WorkoutSession()
     private val _state = MutableStateFlow(session.state)
     val state: StateFlow<WorkoutState> = _state.asStateFlow()
-
-    private val notificationChannel = Channel<RestNotification>(Channel.BUFFERED)
-    val notifications = notificationChannel.receiveAsFlow()
 
     private var timerJob: Job? = null
 
@@ -35,12 +31,14 @@ class GymViewModel : ViewModel() {
             WorkoutAction.ResetTimer -> session.resetTimer()
             WorkoutAction.CompleteSet -> session.completeSet(now)
             WorkoutAction.IncreaseTargetSets -> session.increaseTargetSets()
+            WorkoutAction.ResetCurrentTargetToDefault -> session.resetCurrentTargetToDefault()
             is WorkoutAction.AdjustExercise -> session.adjustExercise(action.delta)
             is WorkoutAction.AdjustDefaultSets -> session.adjustDefaultSets(action.delta)
             is WorkoutAction.AdjustRestLimit -> session.adjustRestLimit(action.deltaSeconds, now)
             is WorkoutAction.AdjustOverdueReminder -> session.adjustOverdueReminder(action.deltaSeconds, now)
         }
         publish(update)
+        syncReminderRunner(now)
 
         if (session.state.isRunning) startTimerTicks() else stopTimerTicks()
     }
@@ -48,7 +46,9 @@ class GymViewModel : ViewModel() {
     /** Refreshes from elapsed real time when the activity returns from display sleep. */
     fun refreshElapsedTime() {
         if (!session.state.isRunning) return
-        publish(session.refresh(SystemClock.elapsedRealtime()))
+        val now = SystemClock.elapsedRealtime()
+        publish(session.refresh(now))
+        syncReminderRunner(now)
     }
 
     private fun startTimerTicks() {
@@ -70,11 +70,18 @@ class GymViewModel : ViewModel() {
 
     private fun publish(update: SessionUpdate) {
         _state.value = update.state
-        update.notifications.forEach(notificationChannel::trySend)
     }
 
-    override fun onCleared() {
-        notificationChannel.close()
+    private fun syncReminderRunner(nowMillis: Long) {
+        RestReminderService.sync(
+            context = getApplication(),
+            running = session.state.isRunning,
+            elapsedMillis = session.elapsedMillisAt(nowMillis),
+            restLimitSeconds = session.state.restLimitSeconds,
+            overdueIntervalSeconds = session.state.overdueReminderSeconds,
+            limitNotified = session.hasNotifiedRestLimit,
+            nextOverdueAtSeconds = session.nextOverdueReminderAtSeconds
+        )
     }
 
     private companion object {

@@ -9,6 +9,9 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
     private var startedAtMillis: Long? = null
     private var restLimitNotified = false
     private var nextOverdueAtSeconds: Long? = null
+    val hasNotifiedRestLimit: Boolean get() = restLimitNotified
+    val nextOverdueReminderAtSeconds: Long? get() = nextOverdueAtSeconds
+    fun elapsedMillisAt(nowMillis: Long): Long = elapsedMillis(nowMillis)
 
     fun toggleTimer(nowMillis: Long): SessionUpdate {
         if (state.isRunning) {
@@ -86,6 +89,11 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
         return SessionUpdate(state)
     }
 
+    fun resetCurrentTargetToDefault(): SessionUpdate {
+        state = state.copy(targetSets = state.defaultSets)
+        return SessionUpdate(state)
+    }
+
     fun adjustExercise(delta: Int): SessionUpdate {
         state = state.copy(exercise = (state.exercise + delta).coerceIn(1, MAX_EXERCISE))
         return SessionUpdate(state)
@@ -98,7 +106,13 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
 
     fun adjustRestLimit(deltaSeconds: Int, nowMillis: Long): SessionUpdate {
         val notifications = refresh(nowMillis).notifications
-        state = state.copy(restLimitSeconds = (state.restLimitSeconds + deltaSeconds).coerceIn(10, 3_600))
+        val currentStep = state.restLimitSeconds / WorkoutState.REST_LIMIT_STEP_SECONDS
+        val direction = deltaSeconds.compareTo(0)
+        val nextStep = (currentStep + direction).coerceIn(
+            WorkoutState.MIN_REST_LIMIT_SECONDS / WorkoutState.REST_LIMIT_STEP_SECONDS,
+            WorkoutState.MAX_REST_LIMIT_SECONDS / WorkoutState.REST_LIMIT_STEP_SECONDS
+        )
+        state = state.copy(restLimitSeconds = nextStep * WorkoutState.REST_LIMIT_STEP_SECONDS)
         return SessionUpdate(state, notifications)
     }
 
