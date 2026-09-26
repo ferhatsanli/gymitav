@@ -21,6 +21,8 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
     private val session = WorkoutSession()
     private val _state = MutableStateFlow(session.state)
     val state: StateFlow<WorkoutState> = _state.asStateFlow()
+    private val _settingsState = MutableStateFlow(session.state.toSettingsUiState())
+    val settingsState: StateFlow<SettingsUiState> = _settingsState.asStateFlow()
 
     private var timerJob: Job? = null
 
@@ -29,6 +31,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         val update = when (action) {
             WorkoutAction.ToggleTimer -> session.toggleTimer(now)
             WorkoutAction.ResetTimer -> session.resetTimer()
+            WorkoutAction.MainScreenBack -> session.handleMainScreenBack(now)
             WorkoutAction.CompleteSet -> session.completeSet(now)
             WorkoutAction.IncreaseTargetSets -> session.increaseTargetSets()
             WorkoutAction.ResetCurrentTargetToDefault -> session.resetCurrentTargetToDefault()
@@ -70,6 +73,15 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun publish(update: SessionUpdate) {
         _state.value = update.state
+        val current = _settingsState.value
+        val next = update.state
+        if (current.exercise != next.exercise ||
+            current.defaultSets != next.defaultSets ||
+            current.restLimitSeconds != next.restLimitSeconds ||
+            current.overdueReminderSeconds != next.overdueReminderSeconds
+        ) {
+            _settingsState.value = next.toSettingsUiState()
+        }
     }
 
     private fun syncReminderRunner(nowMillis: Long) {
@@ -88,3 +100,17 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
         const val TIMER_DISPLAY_INTERVAL_MILLIS = 1_000L
     }
 }
+
+data class SettingsUiState(
+    val exercise: Int,
+    val defaultSets: Int,
+    val restLimitSeconds: Int,
+    val overdueReminderSeconds: Int
+)
+
+private fun WorkoutState.toSettingsUiState() = SettingsUiState(
+    exercise = exercise,
+    defaultSets = defaultSets,
+    restLimitSeconds = restLimitSeconds,
+    overdueReminderSeconds = overdueReminderSeconds
+)

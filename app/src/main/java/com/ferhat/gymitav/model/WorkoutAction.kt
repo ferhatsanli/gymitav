@@ -3,6 +3,7 @@ package com.ferhat.gymitav.model
 sealed interface WorkoutAction {
     data object ToggleTimer : WorkoutAction
     data object ResetTimer : WorkoutAction
+    data object MainScreenBack : WorkoutAction
     data object CompleteSet : WorkoutAction
     data object IncreaseTargetSets : WorkoutAction
     data object ResetCurrentTargetToDefault : WorkoutAction

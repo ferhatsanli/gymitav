@@ -121,7 +121,7 @@ fun TimerScreen(
                     CustomAccessibilityAction("Increase target sets") { currentAction.value(MainScreenAction.INCREASE_TARGET_SETS); true },
                     CustomAccessibilityAction("Open settings") { currentAction.value(MainScreenAction.OPEN_SETTINGS); true },
                     CustomAccessibilityAction("Complete set") { currentAction.value(MainScreenAction.COMPLETE_SET); true },
-                    CustomAccessibilityAction("Reset timer") { currentAction.value(MainScreenAction.RESET_TIMER); true }
+                    CustomAccessibilityAction("Back or reset current exercise") { currentAction.value(MainScreenAction.BACK); true }
                 )
             },
         contentAlignment = Alignment.Center
@@ -167,12 +167,13 @@ private fun TextLabel(text: String, size: androidx.compose.ui.unit.TextUnit, col
 
 private fun DrawScope.drawTimerGlow(state: WorkoutState) {
     if (!state.isRunning) return
-    val radius = size.minDimension * 0.48f
+    val radius = size.minDimension * 0.39f
     val glowColor = if (state.isOverRestLimit) OvertimeRed else RunningGreen
     drawCircle(
         brush = Brush.radialGradient(
-            0f to glowColor.copy(alpha = 0.075f),
-            0.43f to glowColor.copy(alpha = 0.034f),
+            0f to glowColor.copy(alpha = 0.16f),
+            0.34f to glowColor.copy(alpha = 0.105f),
+            0.72f to glowColor.copy(alpha = 0.025f),
             1f to Color.Transparent,
             center = center,
             radius = radius
@@ -192,6 +193,12 @@ private fun DrawScope.drawControlRing(state: WorkoutState) {
     val arcSize = Size(ringRadius * 2, ringRadius * 2)
     val sectorColor = if (state.isOverRestLimit) OvertimeRed else TimerBlue
 
+    val glassBrush = Brush.linearGradient(
+        colors = listOf(Color(0xFF365364).copy(alpha = 0.72f), Color(0xFF101C27).copy(alpha = 0.96f), Color(0xFF27424F).copy(alpha = 0.76f)),
+        start = Offset(topLeft.x, topLeft.y),
+        end = Offset(topLeft.x + arcSize.width, topLeft.y + arcSize.height)
+    )
+
     listOf(-130f, -40f, 50f, 140f).forEachIndexed { index, start ->
         val tint = when (index) {
             0 -> Color(0xFF193039)
@@ -200,7 +207,7 @@ private fun DrawScope.drawControlRing(state: WorkoutState) {
             else -> Color(0xFF1D2931)
         }
         drawArc(
-            color = tint,
+            brush = glassBrush,
             startAngle = start,
             sweepAngle = 80f,
             useCenter = false,
@@ -208,10 +215,28 @@ private fun DrawScope.drawControlRing(state: WorkoutState) {
             size = arcSize,
             style = Stroke(width = bandWidth, cap = StrokeCap.Butt)
         )
+        drawArc(
+            color = tint.copy(alpha = 0.30f),
+            startAngle = start + 7f,
+            sweepAngle = 66f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = bandWidth * 0.56f, cap = StrokeCap.Butt)
+        )
+        drawArc(
+            color = Color(0xFF8DDBF7).copy(alpha = 0.16f),
+            startAngle = start + 4f,
+            sweepAngle = 72f,
+            useCenter = false,
+            topLeft = Offset(center.x - outerRadius, center.y - outerRadius),
+            size = Size(outerRadius * 2f, outerRadius * 2f),
+            style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Butt)
+        )
     }
 
-    drawCircle(Color.White.copy(alpha = 0.10f), outerRadius, center, style = Stroke(width = 1.dp.toPx()))
-    drawCircle(Color.White.copy(alpha = 0.10f), innerRadius, center, style = Stroke(width = 1.dp.toPx()))
+    drawCircle(Color(0xFF7DCFEF).copy(alpha = 0.16f), outerRadius, center, style = Stroke(width = 1.dp.toPx()))
+    drawCircle(Color(0xFF7DCFEF).copy(alpha = 0.11f), innerRadius, center, style = Stroke(width = 1.dp.toPx()))
 
     listOf(-135f, -45f, 45f, 135f).forEach { angle ->
         val radians = Math.toRadians(angle.toDouble())

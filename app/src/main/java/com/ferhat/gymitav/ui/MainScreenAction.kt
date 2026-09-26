@@ -9,7 +9,7 @@ enum class MainScreenAction {
     INCREASE_TARGET_SETS,
     OPEN_SETTINGS,
     COMPLETE_SET,
-    RESET_TIMER
+    BACK
 }
 
 fun resolveSwipeAction(dx: Float, dy: Float, thresholdPx: Float): MainScreenAction? {
@@ -18,7 +18,7 @@ fun resolveSwipeAction(dx: Float, dy: Float, thresholdPx: Float): MainScreenActi
         abs(dy) >= abs(dx) * AXIS_DOMINANCE && dy > 0f -> MainScreenAction.INCREASE_TARGET_SETS
         abs(dy) >= abs(dx) * AXIS_DOMINANCE && dy < 0f -> MainScreenAction.COMPLETE_SET
         abs(dx) >= abs(dy) * AXIS_DOMINANCE && dx < 0f -> MainScreenAction.OPEN_SETTINGS
-        abs(dx) >= abs(dy) * AXIS_DOMINANCE && dx > 0f -> MainScreenAction.RESET_TIMER
+        abs(dx) >= abs(dy) * AXIS_DOMINANCE && dx > 0f -> MainScreenAction.BACK
         else -> null
     }
 }
@@ -40,7 +40,7 @@ private fun actionForAngle(radians: Float): MainScreenAction {
         degrees >= -135 && degrees < -45 -> MainScreenAction.INCREASE_TARGET_SETS
         degrees >= -45 && degrees < 45 -> MainScreenAction.OPEN_SETTINGS
         degrees >= 45 && degrees < 135 -> MainScreenAction.COMPLETE_SET
-        else -> MainScreenAction.RESET_TIMER
+        else -> MainScreenAction.BACK
     }
 }
 

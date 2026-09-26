@@ -10,7 +10,7 @@ class GestureResolverTest {
         assertEquals(MainScreenAction.INCREASE_TARGET_SETS, resolveSwipeAction(0f, 80f, 36f))
         assertEquals(MainScreenAction.OPEN_SETTINGS, resolveSwipeAction(-80f, 0f, 36f))
         assertEquals(MainScreenAction.COMPLETE_SET, resolveSwipeAction(0f, -80f, 36f))
-        assertEquals(MainScreenAction.RESET_TIMER, resolveSwipeAction(80f, 0f, 36f))
+        assertEquals(MainScreenAction.BACK, resolveSwipeAction(80f, 0f, 36f))
     }
 
     @Test
@@ -29,7 +29,7 @@ class GestureResolverTest {
         assertEquals(MainScreenAction.INCREASE_TARGET_SETS, resolveTapAction(100f, 25f, centerX, centerY, side))
         assertEquals(MainScreenAction.OPEN_SETTINGS, resolveTapAction(175f, 100f, centerX, centerY, side))
         assertEquals(MainScreenAction.COMPLETE_SET, resolveTapAction(100f, 175f, centerX, centerY, side))
-        assertEquals(MainScreenAction.RESET_TIMER, resolveTapAction(25f, 100f, centerX, centerY, side))
+        assertEquals(MainScreenAction.BACK, resolveTapAction(25f, 100f, centerX, centerY, side))
         assertNull(resolveTapAction(5f, 5f, centerX, centerY, side))
     }
 }

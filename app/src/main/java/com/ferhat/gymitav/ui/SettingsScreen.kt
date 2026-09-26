@@ -1,8 +1,9 @@
 package com.ferhat.gymitav.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,14 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -34,7 +36,7 @@ import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import com.ferhat.gymitav.model.WorkoutAction
-import com.ferhat.gymitav.model.WorkoutState
+import com.ferhat.gymitav.viewmodel.SettingsUiState
 
 private val SettingsBackground = Color(0xFF05080B)
 private val PrimaryText = Color(0xFFE7EFF3)
@@ -42,7 +44,7 @@ private val SecondaryText = Color(0xFF91A1AA)
 
 @Composable
 fun SettingsScreen(
-    state: WorkoutState,
+    state: SettingsUiState,
     onAction: (WorkoutAction) -> Unit,
     onBack: () -> Unit
 ) {
@@ -93,14 +95,18 @@ fun SettingsScreen(
             )
         }
         item(key = "reset-current-target") {
+            val buttonShape = RoundedCornerShape(18.dp)
             Box(
-                modifier = Modifier.fillMaxWidth().height(30.dp)
+                modifier = Modifier.size(width = 136.dp, height = 44.dp)
+                    .clip(buttonShape)
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF102536), Color(0xFF172D42), Color(0xFF102536))))
+                    .border(1.dp, Color(0xFF68C9F2).copy(alpha = 0.24f), buttonShape)
                     .clickable(role = Role.Button) { onAction(WorkoutAction.ResetCurrentTargetToDefault) }
                     .semantics { contentDescription = "Reset current exercise target to default sets" },
                 contentAlignment = Alignment.Center
             ) {
-                Text("RESET TO DEFAULT", color = SecondaryText.copy(alpha = 0.78f), fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium, letterSpacing = 0.8.sp, textAlign = TextAlign.Center)
+                Text("RESET TO DEFAULT", color = Color(0xFFB7D6E6), fontSize = 9.sp,
+                    fontWeight = FontWeight.Medium, letterSpacing = 0.65.sp, textAlign = TextAlign.Center)
             }
         }
         item(key = "rest-limit") {

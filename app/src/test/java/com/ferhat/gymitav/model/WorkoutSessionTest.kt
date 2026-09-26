@@ -153,6 +153,53 @@ class WorkoutSessionTest {
     }
 
     @Test
+    fun mainBackWithElapsedTimerResetsOnlyTimerAndPreservesProgress() {
+        val session = WorkoutSession(WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4))
+        session.toggleTimer(0L)
+        session.refresh(77_000L)
+        session.toggleTimer(77_000L)
+
+        val update = session.handleMainScreenBack(77_000L)
+
+        assertEquals(0L, update.state.elapsedSeconds)
+        assertFalse(update.state.isRunning)
+        assertEquals(3, update.state.exercise)
+        assertEquals(2, update.state.completedSets)
+        assertEquals(5, update.state.targetSets)
+        assertEquals(4, update.state.defaultSets)
+    }
+
+    @Test
+    fun mainBackWhileRunningResetsAndPausesTimer() {
+        val session = WorkoutSession(WorkoutState(completedSets = 1))
+        session.toggleTimer(1_000L)
+
+        val update = session.handleMainScreenBack(43_000L)
+
+        assertEquals(0L, update.state.elapsedSeconds)
+        assertFalse(update.state.isRunning)
+        assertEquals(1, update.state.completedSets)
+    }
+
+    @Test
+    fun mainBackAtPausedZeroClearsCompletedSetsOnly() {
+        val session = WorkoutSession(
+            WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4, overdueReminderSeconds = 15)
+        )
+
+        val update = session.handleMainScreenBack(0L)
+
+        assertEquals(0, update.state.completedSets)
+        assertEquals(3, update.state.exercise)
+        assertEquals(5, update.state.targetSets)
+        assertEquals(4, update.state.defaultSets)
+        assertEquals(120, update.state.restLimitSeconds)
+        assertEquals(15, update.state.overdueReminderSeconds)
+        assertEquals(0L, update.state.elapsedSeconds)
+        assertFalse(update.state.isRunning)
+    }
+
+    @Test
     fun restLimitNotificationOccursOnceWhenThresholdIsCrossed() {
         val session = WorkoutSession(WorkoutState(overdueReminderSeconds = 0))
         session.toggleTimer(0L)

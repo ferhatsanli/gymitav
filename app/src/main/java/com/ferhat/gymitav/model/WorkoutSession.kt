@@ -68,6 +68,13 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
         return SessionUpdate(state)
     }
 
+    /** Back first clears an active rest timer, then clears completed sets when already idle at zero. */
+    fun handleMainScreenBack(nowMillis: Long): SessionUpdate {
+        if (state.isRunning || elapsedMillis(nowMillis) > 0L) return resetTimer()
+        state = state.copy(completedSets = 0)
+        return SessionUpdate(state)
+    }
+
     fun completeSet(nowMillis: Long): SessionUpdate {
         val notifications = refresh(nowMillis).notifications
         val completed = state.completedSets + 1
