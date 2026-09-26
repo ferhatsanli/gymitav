@@ -77,15 +77,14 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
     fun completeSet(nowMillis: Long): SessionUpdate {
         val notifications = refresh(nowMillis).notifications
         state = state.copy(isWorkoutSessionActive = true)
-        val completed = state.completedSets + 1
-        state = if (completed >= state.targetSets) {
+        state = if (state.currentSet < state.targetSets) {
+            state.copy(currentSet = state.currentSet + 1)
+        } else {
             state.copy(
                 exercise = state.exercise + 1,
-                completedSets = 0,
+                currentSet = 1,
                 targetSets = state.defaultSets
             )
-        } else {
-            state.copy(completedSets = completed)
         }
         resetTimer()
         return SessionUpdate(state, notifications)
@@ -96,7 +95,7 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
         resetCurrentTargetToDefault()
         state = state.copy(
             exercise = 1,
-            completedSets = 0,
+            currentSet = 1,
             isWorkoutSessionActive = false
         )
         return SessionUpdate(state)
@@ -111,7 +110,10 @@ class WorkoutSession(initialState: WorkoutState = WorkoutState()) {
     }
 
     fun resetCurrentTargetToDefault(): SessionUpdate {
-        state = state.copy(targetSets = state.defaultSets)
+        state = state.copy(
+            targetSets = state.defaultSets,
+            currentSet = state.currentSet.coerceAtMost(state.defaultSets)
+        )
         return SessionUpdate(state)
     }
 

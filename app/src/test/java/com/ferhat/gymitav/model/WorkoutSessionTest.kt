@@ -7,11 +7,11 @@ import org.junit.Test
 
 class WorkoutSessionTest {
     @Test
-    fun initialStateIsExerciseOneZeroOfThreeAndPaused() {
+    fun initialStateIsExerciseOneSetOneOfThreeAndPaused() {
         val session = WorkoutSession()
 
         assertEquals(1, session.state.exercise)
-        assertEquals(0, session.state.completedSets)
+        assertEquals(1, session.state.currentSet)
         assertEquals(3, session.state.targetSets)
         assertEquals(0L, session.state.elapsedSeconds)
         assertFalse(session.state.isRunning)
@@ -19,14 +19,14 @@ class WorkoutSessionTest {
     }
 
     @Test
-    fun setOkIncrementsCompletedSetsAndResetsPausedTimer() {
+    fun setOkAdvancesToNextCurrentSetAndResetsPausedTimer() {
         val session = WorkoutSession()
         session.toggleTimer(0L)
         session.refresh(42_500L)
 
         val update = session.completeSet(42_500L)
 
-        assertEquals(1, update.state.completedSets)
+        assertEquals(2, update.state.currentSet)
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
         assertTrue(update.state.isWorkoutSessionActive)
@@ -44,34 +44,58 @@ class WorkoutSessionTest {
     }
 
     @Test
-    fun finalSetAdvancesExerciseAndStartsAtZeroOfDefaultTarget() {
-        val session = WorkoutSession(WorkoutState(targetSets = 2, defaultSets = 4, completedSets = 1))
+    fun setOkFromSetTwoShowsFinalSetWithoutAdvancingExercise() {
+        val session = WorkoutSession(WorkoutState(targetSets = 3, defaultSets = 4, currentSet = 2))
 
         val update = session.completeSet(0L)
 
-        assertEquals(2, update.state.exercise)
-        assertEquals(0, update.state.completedSets)
-        assertEquals(4, update.state.targetSets)
+        assertEquals(1, update.state.exercise)
+        assertEquals(3, update.state.currentSet)
+        assertEquals(3, update.state.targetSets)
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
         assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
+    fun setOkFromFinalSetAdvancesExerciseAndStartsAtSetOneOfDefaultTarget() {
+        val session = WorkoutSession(WorkoutState(targetSets = 3, defaultSets = 4, currentSet = 3))
+
+        val update = session.completeSet(0L)
+
+        assertEquals(2, update.state.exercise)
+        assertEquals(1, update.state.currentSet)
+        assertEquals(4, update.state.targetSets)
+        assertFalse(update.state.isRunning)
+        assertEquals(0L, update.state.elapsedSeconds)
+    }
+
+    @Test
+    fun oneTargetSetAdvancesOnlyWhenSetOkIsPressed() {
+        val session = WorkoutSession(WorkoutState(targetSets = 1, defaultSets = 3, currentSet = 1))
+
+        val update = session.completeSet(0L)
+
+        assertEquals(2, update.state.exercise)
+        assertEquals(1, update.state.currentSet)
+        assertEquals(3, update.state.targetSets)
+    }
+
+    @Test
     fun increaseTargetSetsChangesCurrentTargetOnly() {
-        val session = WorkoutSession(WorkoutState(completedSets = 1, targetSets = 3, defaultSets = 3))
+        val session = WorkoutSession(WorkoutState(currentSet = 1, targetSets = 3, defaultSets = 3))
 
         val update = session.increaseTargetSets()
 
         assertEquals(4, update.state.targetSets)
         assertEquals(3, update.state.defaultSets)
-        assertEquals(1, update.state.completedSets)
+        assertEquals(1, update.state.currentSet)
         assertTrue(update.state.isWorkoutSessionActive)
     }
 
     @Test
-    fun resetCurrentTargetToDefaultChangesOnlyTheCurrentTarget() {
-        val session = WorkoutSession(WorkoutState(exercise = 7, completedSets = 1, targetSets = 8, defaultSets = 3))
+    fun resetCurrentTargetToDefaultClampsCurrentSetToKeepStateValid() {
+        val session = WorkoutSession(WorkoutState(exercise = 7, currentSet = 7, targetSets = 8, defaultSets = 3))
         session.toggleTimer(1_000L)
         session.refresh(12_500L)
 
@@ -80,7 +104,7 @@ class WorkoutSessionTest {
         assertEquals(3, update.state.targetSets)
         assertEquals(3, update.state.defaultSets)
         assertEquals(7, update.state.exercise)
-        assertEquals(1, update.state.completedSets)
+        assertEquals(3, update.state.currentSet)
         assertEquals(11L, update.state.elapsedSeconds)
         assertTrue(update.state.isRunning)
     }
@@ -122,15 +146,27 @@ class WorkoutSessionTest {
         WorkoutState(restLimitSeconds = 115)
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun currentSetCannotExceedTargetSets() {
+        WorkoutState(currentSet = 4, targetSets = 3)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun currentSetCannotStartAtZero() {
+        WorkoutState(currentSet = 0)
+    }
+
     @Test
-    fun defaultSetSettingIsUsedByTheFollowingExercise() {
-        val session = WorkoutSession(WorkoutState(targetSets = 4, completedSets = 3))
+    fun updatedDefaultSetSettingIsUsedByTheFollowingExercise() {
+        val session = WorkoutSession(WorkoutState(targetSets = 4, currentSet = 4))
         session.adjustDefaultSets(1)
 
         val update = session.completeSet(0L)
 
         assertEquals(4, update.state.defaultSets)
         assertEquals(4, update.state.targetSets)
+        assertEquals(2, update.state.exercise)
+        assertEquals(1, update.state.currentSet)
     }
 
     @Test
@@ -144,13 +180,13 @@ class WorkoutSessionTest {
 
     @Test
     fun resetPreservesWorkoutProgressAndSettings() {
-        val session = WorkoutSession(WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4))
+        val session = WorkoutSession(WorkoutState(exercise = 3, currentSet = 2, targetSets = 5, defaultSets = 4))
         session.toggleTimer(1_000L)
 
         val update = session.resetTimer()
 
         assertEquals(3, update.state.exercise)
-        assertEquals(2, update.state.completedSets)
+        assertEquals(2, update.state.currentSet)
         assertEquals(5, update.state.targetSets)
         assertEquals(4, update.state.defaultSets)
         assertTrue(update.state.isWorkoutSessionActive)
@@ -162,7 +198,7 @@ class WorkoutSessionTest {
     fun mainBackWithElapsedTimerResetsOnlyTimerAndPreservesProgress() {
         val session = WorkoutSession(WorkoutState(
             exercise = 3,
-            completedSets = 2,
+            currentSet = 2,
             targetSets = 5,
             defaultSets = 4,
             restLimitSeconds = 180,
@@ -177,7 +213,7 @@ class WorkoutSessionTest {
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
         assertEquals(3, update.state.exercise)
-        assertEquals(2, update.state.completedSets)
+        assertEquals(2, update.state.currentSet)
         assertEquals(5, update.state.targetSets)
         assertEquals(4, update.state.defaultSets)
         assertEquals(180, update.state.restLimitSeconds)
@@ -189,7 +225,7 @@ class WorkoutSessionTest {
     fun mainBackWhileRunningResetsAndPausesTimer() {
         val session = WorkoutSession(WorkoutState(
             exercise = 4,
-            completedSets = 1,
+            currentSet = 1,
             targetSets = 5,
             defaultSets = 3,
             restLimitSeconds = 180,
@@ -202,7 +238,7 @@ class WorkoutSessionTest {
         assertEquals(0L, update.state.elapsedSeconds)
         assertFalse(update.state.isRunning)
         assertEquals(4, update.state.exercise)
-        assertEquals(1, update.state.completedSets)
+        assertEquals(1, update.state.currentSet)
         assertEquals(5, update.state.targetSets)
         assertEquals(3, update.state.defaultSets)
         assertEquals(180, update.state.restLimitSeconds)
@@ -224,13 +260,13 @@ class WorkoutSessionTest {
     @Test
     fun mainBackAtPausedZeroEndsSessionAndPreservesSettings() {
         val session = WorkoutSession(
-            WorkoutState(exercise = 3, completedSets = 2, targetSets = 5, defaultSets = 4,
+            WorkoutState(exercise = 3, currentSet = 2, targetSets = 5, defaultSets = 4,
                 restLimitSeconds = 180, overdueReminderSeconds = 15, isWorkoutSessionActive = true)
         )
 
         val update = session.handleMainScreenBack(0L)
 
-        assertEquals(0, update.state.completedSets)
+        assertEquals(1, update.state.currentSet)
         assertEquals(1, update.state.exercise)
         assertEquals(4, update.state.targetSets)
         assertEquals(4, update.state.defaultSets)
@@ -244,7 +280,7 @@ class WorkoutSessionTest {
     @Test
     fun fullSessionResetClearsReminderSchedulingButRetainsUserPreferences() {
         val session = WorkoutSession(
-            WorkoutState(exercise = 5, completedSets = 2, targetSets = 7, defaultSets = 3,
+            WorkoutState(exercise = 5, currentSet = 2, targetSets = 7, defaultSets = 3,
                 restLimitSeconds = 15, overdueReminderSeconds = 5, isWorkoutSessionActive = true)
         )
         session.toggleTimer(0L)
@@ -255,7 +291,7 @@ class WorkoutSessionTest {
         val update = session.handleMainScreenBack(15_000L) // Stage 2: end the session.
 
         assertEquals(1, update.state.exercise)
-        assertEquals(0, update.state.completedSets)
+        assertEquals(1, update.state.currentSet)
         assertEquals(3, update.state.targetSets)
         assertEquals(3, update.state.defaultSets)
         assertEquals(15, update.state.restLimitSeconds)

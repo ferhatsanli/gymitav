@@ -53,9 +53,9 @@ class RestReminderService : Service() {
         stopReminder()
         val running = intent.getBooleanExtra(EXTRA_RUNNING, false)
         val exercise = intent.getIntExtra(EXTRA_EXERCISE, 1)
-        val completedSets = intent.getIntExtra(EXTRA_COMPLETED_SETS, 0)
+        val currentSet = intent.getIntExtra(EXTRA_CURRENT_SET, 1)
         val targetSets = intent.getIntExtra(EXTRA_TARGET_SETS, 3)
-        updateWorkoutActivity(running, exercise, completedSets, targetSets)
+        updateWorkoutActivity(running, exercise, currentSet, targetSets)
 
         if (!running) return START_NOT_STICKY
         val elapsedAtUpdateMillis = intent.getLongExtra(EXTRA_ELAPSED_MILLIS, 0L)
@@ -179,7 +179,7 @@ class RestReminderService : Service() {
             .setOngoing(true)
     }
 
-    private fun updateWorkoutActivity(running: Boolean, exercise: Int, completedSets: Int, targetSets: Int) {
+    private fun updateWorkoutActivity(running: Boolean, exercise: Int, currentSet: Int, targetSets: Int) {
         val notificationBuilder = buildWorkoutNotification()
         val permissionGranted = ContextCompat.checkSelfPermission(
             this,
@@ -195,7 +195,7 @@ class RestReminderService : Service() {
         val status = Status.Builder()
             .addTemplate("#exercise# · Set #sets#/#target# · #state#")
             .addPart("exercise", Status.TextPart("Exercise $exercise"))
-            .addPart("sets", Status.TextPart(completedSets.toString()))
+            .addPart("sets", Status.TextPart(currentSet.toString()))
             .addPart("target", Status.TextPart(targetSets.toString()))
             .addPart("state", Status.TextPart(if (running) "Rest timer running" else "Paused"))
             .build()
@@ -252,7 +252,7 @@ class RestReminderService : Service() {
         private const val EXTRA_LIMIT_NOTIFIED = "limit_notified"
         private const val EXTRA_NEXT_OVERDUE = "next_overdue"
         private const val EXTRA_EXERCISE = "exercise"
-        private const val EXTRA_COMPLETED_SETS = "completed_sets"
+        private const val EXTRA_CURRENT_SET = "current_set"
         private const val EXTRA_TARGET_SETS = "target_sets"
         private const val NO_OVERDUE = Long.MIN_VALUE
         private const val CHANNEL_ID = "rest_timer"
@@ -264,7 +264,7 @@ class RestReminderService : Service() {
 
         fun sync(context: Context, sessionActive: Boolean, running: Boolean, elapsedMillis: Long,
                  restLimitSeconds: Int, overdueIntervalSeconds: Int, limitNotified: Boolean,
-                 nextOverdueAtSeconds: Long?, exercise: Int, completedSets: Int, targetSets: Int) {
+                 nextOverdueAtSeconds: Long?, exercise: Int, currentSet: Int, targetSets: Int) {
             val intent = Intent(context, RestReminderService::class.java).apply {
                 putExtra(EXTRA_SESSION_ACTIVE, sessionActive)
                 putExtra(EXTRA_RUNNING, running)
@@ -274,7 +274,7 @@ class RestReminderService : Service() {
                 putExtra(EXTRA_LIMIT_NOTIFIED, limitNotified)
                 putExtra(EXTRA_NEXT_OVERDUE, nextOverdueAtSeconds ?: NO_OVERDUE)
                 putExtra(EXTRA_EXERCISE, exercise)
-                putExtra(EXTRA_COMPLETED_SETS, completedSets)
+                putExtra(EXTRA_CURRENT_SET, currentSet)
                 putExtra(EXTRA_TARGET_SETS, targetSets)
             }
             if (sessionActive) {

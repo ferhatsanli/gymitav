@@ -94,7 +94,7 @@ class GymViewModel(application: Application) : AndroidViewModel(application) {
             limitNotified = session.hasNotifiedRestLimit,
             nextOverdueAtSeconds = session.nextOverdueReminderAtSeconds,
             exercise = session.state.exercise,
-            completedSets = session.state.completedSets,
+            currentSet = session.state.currentSet,
             targetSets = session.state.targetSets
         )
     }

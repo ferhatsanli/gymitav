@@ -60,9 +60,9 @@ fun GymApp(viewModel: GymViewModel) {
         edgePulseProgress.animateTo(0f, tween(durationMillis = LED_FADE_MILLIS))
     }
 
-    val executeMainAction: (MainScreenAction, Boolean) -> Unit = { action, fromSwipe ->
+    val executeMainAction: (MainScreenAction, Boolean) -> Unit = { action, _ ->
         val shouldShowFeedback = action != MainScreenAction.TOGGLE_TIMER &&
-            !(fromSwipe && action == MainScreenAction.OPEN_SETTINGS)
+            action != MainScreenAction.OPEN_SETTINGS
         if (shouldShowFeedback) {
             pulseAction.value = action
             pulseSequence += 1

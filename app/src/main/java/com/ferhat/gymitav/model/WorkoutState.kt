@@ -2,7 +2,7 @@ package com.ferhat.gymitav.model
 
 data class WorkoutState(
     val exercise: Int = 1,
-    val completedSets: Int = 0,
+    val currentSet: Int = 1,
     val targetSets: Int = 3,
     val defaultSets: Int = 3,
     val restLimitSeconds: Int = 120,
@@ -12,6 +12,10 @@ data class WorkoutState(
     val isWorkoutSessionActive: Boolean = false
 ) {
     init {
+        require(exercise >= 1)
+        require(defaultSets in 1..99)
+        require(targetSets in 1..99)
+        require(currentSet in 1..targetSets)
         require(restLimitSeconds in MIN_REST_LIMIT_SECONDS..MAX_REST_LIMIT_SECONDS)
         require(restLimitSeconds % REST_LIMIT_STEP_SECONDS == 0)
     }

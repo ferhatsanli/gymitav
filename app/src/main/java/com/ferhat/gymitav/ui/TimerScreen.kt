@@ -56,8 +56,8 @@ fun TimerScreen(
     val viewConfiguration = LocalViewConfiguration.current
     val currentAction = rememberUpdatedState(onAction)
     val currentSwipeAction = rememberUpdatedState(onSwipeAction)
-    val currentDescription = "Exercise ${state.exercise}. ${formatElapsed(state.elapsedSeconds)}. " +
-        "${state.completedSets} of ${state.targetSets} sets completed. ${if (state.isRunning) "Timer running" else "Timer paused"}."
+    val currentDescription = "Exercise ${state.exercise}. Current set ${state.currentSet} of ${state.targetSets}. " +
+        "${formatElapsed(state.elapsedSeconds)}. ${if (state.isRunning) "Rest timer running" else "Timer paused"}."
 
     BoxWithConstraints(
         modifier = Modifier
@@ -123,7 +123,7 @@ fun TimerScreen(
                     CustomAccessibilityAction("Increase target sets") { currentAction.value(MainScreenAction.INCREASE_TARGET_SETS); true },
                     CustomAccessibilityAction("Open settings") { currentAction.value(MainScreenAction.OPEN_SETTINGS); true },
                     CustomAccessibilityAction("Complete set") { currentAction.value(MainScreenAction.COMPLETE_SET); true },
-                    CustomAccessibilityAction("Back or reset current exercise") { currentAction.value(MainScreenAction.BACK); true }
+                    CustomAccessibilityAction("Reset workout timer or session") { currentAction.value(MainScreenAction.BACK); true }
                 )
             },
         contentAlignment = Alignment.Center
@@ -154,7 +154,7 @@ fun TimerScreen(
                 maxLines = 1
             )
             Spacer(Modifier.height(2.dp))
-            TextLabel("SET ${state.completedSets}/${state.targetSets}", size = 14.sp, color = Color(0xFFE3EBEF), weight = FontWeight.SemiBold)
+            TextLabel("SET ${state.currentSet}/${state.targetSets}", size = 14.sp, color = Color(0xFFE3EBEF), weight = FontWeight.SemiBold)
             Spacer(Modifier.height(6.dp))
             TextLabel(if (state.isRunning) "RUNNING" else "PAUSED", size = 9.sp, color = if (state.isRunning) RunningGreen else Color(0xFF73818A), weight = FontWeight.Medium)
         }
@@ -257,7 +257,7 @@ private fun DrawScope.drawCurvedLabels(color: Color) {
     val labels = listOf(
         "+ SET" to 230f,
         "SETTINGS" to 320f,
-        "BACK" to 140f
+        "RESET" to 140f
     )
     val arcSweep = 80f
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
